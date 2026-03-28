@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 import { ClassType, GameState, ItemId, ZoneId } from "@/types/game"
 
 /**
@@ -46,63 +47,74 @@ interface GameStore extends GameState {
     completeZone: (zoneId: ZoneId) => void
     markQuestionAnswered: (questionId: string) => void
     resetGame: () => void
+    setCurrentZone: (zoneId: ZoneId) => void
 }
 
-export const useGameStore = create<GameStore>((set) => ({
-    ...INITIAL_STATE,
+export const useGameStore = create<GameStore>()(
+    persist(
+        (set) => ({
+            ...INITIAL_STATE,
 
-    setClass: (classType, starterItemId) =>
-        set((state) => ({
-            class: classType,
-            inventory: state.inventory.map((item) =>
-                item.id === starterItemId ? { ...item, quantity: 1 } : item
-            ),
-        })),
+            setClass: (classType, starterItemId) =>
+                set((state) => ({
+                    class: classType,
+                    inventory: state.inventory.map((item) =>
+                        item.id === starterItemId ? { ...item, quantity: 1 } : item
+                    ),
+                })),
 
-    addCoins: (amount) =>
-        set((state) => ({ coins: state.coins + amount })),
+            addCoins: (amount) =>
+                set((state) => ({ coins: state.coins + amount })),
 
-    loseLife: () =>
-        set((state) => ({ lives: Math.max(0, state.lives - 1) })),
+            loseLife: () =>
+                set((state) => ({ lives: Math.max(0, state.lives - 1) })),
 
-    incrementStreak: () =>
-        set((state) => ({ streak: state.streak + 1 })),
+            incrementStreak: () =>
+                set((state) => ({ streak: state.streak + 1 })),
 
-    resetStreak: () =>
-        set({ streak: 0 }),
+            resetStreak: () =>
+                set({ streak: 0 }),
 
-    useItem: (itemId) =>
-        set((state) => ({
-            inventory: state.inventory.map((item) =>
-                item.id === itemId ? { ...item, quantity: Math.max(0, item.quantity - 1) } : item
-            ),
-        })),
+            useItem: (itemId) =>
+                set((state) => ({
+                    inventory: state.inventory.map((item) =>
+                        item.id === itemId ? { ...item, quantity: Math.max(0, item.quantity - 1) } : item
+                    ),
+                })),
 
-    buyItem: (itemId) =>
-        set((state) => {
-            const item = state.inventory.find((i) => i.id === itemId)
-            if (!item || state.coins < item.cost) return state
-            return {
-                coins: state.coins - item.cost,
-                inventory: state.inventory.map((i) =>
-                    i.id === itemId ? { ...i, quantity: i.quantity + 1 } : i
-                ),
-            }
+            buyItem: (itemId) =>
+                set((state) => {
+                    const item = state.inventory.find((i) => i.id === itemId)
+                    if (!item || state.coins < item.cost) return state
+                    return {
+                        coins: state.coins - item.cost,
+                        inventory: state.inventory.map((i) =>
+                            i.id === itemId ? { ...i, quantity: i.quantity + 1 } : i
+                        ),
+                    }
+                }),
+
+            completeZone: (zoneId) =>
+                set((state) => ({
+                    zonesStatus: state.zonesStatus.map((zone) => {
+                        if (zone.id === zoneId) return { ...zone, completed: true }
+                        if (zone.id === zoneId + 1) return { ...zone, unlocked: true }
+                        return zone
+                    }),
+                })),
+
+            markQuestionAnswered: (questionId) =>
+                set((state) => ({
+                    answeredQuestions: [...state.answeredQuestions, questionId],
+                })),
+
+            resetGame: () => {
+                localStorage.removeItem("the-last-dev-storage")
+                set(INITIAL_STATE)
+            },
+
+            setCurrentZone: (zoneId) => set({ currentZone: zoneId }),
         }),
-
-    completeZone: (zoneId) =>
-        set((state) => ({
-            zonesStatus: state.zonesStatus.map((zone) => {
-                if (zone.id === zoneId) return { ...zone, completed: true }
-                if (zone.id === zoneId + 1) return { ...zone, unlocked: true }
-                return zone
-            }),
-        })),
-
-    markQuestionAnswered: (questionId) =>
-        set((state) => ({
-            answeredQuestions: [...state.answeredQuestions, questionId],
-        })),
-
-    resetGame: () => set(INITIAL_STATE),
-}))
+        { name: "game-store" }
+    )
+)

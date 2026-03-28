@@ -178,7 +178,286 @@ Oryn es el corazón narrativo del juego. No es un chatbot, es un agente con memo
 ### MCP Tool: `get_challenge()`
 - El agente llama a esta tool para obtener el siguiente desafío
 - La tool recibe el historial del jugador y devuelve una pregunta adecuada al nivel
-- Esto convierte a Oryn en un agente real, no solo un generador de texto
+- Esto convierte a Oryn en un agente real, no solo una# The Last Dev — Game Design Document
+
+> Versión 3.0 — Estado actual del proyecto al día de hoy.
+> Refleja decisiones de diseño y técnicas tomadas durante el desarrollo.
+
+---
+
+## 1. Concepto
+
+**The Last Dev** es un minijuego RPG educativo donde el jugador asume el rol del último desarrollador de **Syntharia**, un reino mágico donde la magia es código. El conocimiento se perdió y el mundo se apaga. Solo el jugador puede restaurarlo respondiendo desafíos lógicos envueltos en narrativa de fantasía clásica.
+
+Un agente IA llamado **Oryn** actúa como familiar/narrador. Reacciona a cada respuesta y adapta su comportamiento según el desempeño del jugador.
+
+---
+
+## 2. Stack tecnológico
+
+| Tecnología | Rol |
+|---|---|
+| Next.js + TypeScript | Framework fullstack |
+| Zustand + persist | Estado global persistido en localStorage |
+| Groq SDK (LLaMA) | LLM que dará vida a Oryn (Fase 2) |
+| Vercel AI SDK | Manejo del agente y tools MCP (Fase 2) |
+| Tailwind CSS + shadcn/ui | UI y componentes |
+| Framer Motion | Animaciones (Fase 3) |
+
+---
+
+## 3. Estructura del proyecto
+
+```
+the-last-dev/
+├── app/
+│   ├── page.tsx              ← Pantalla 1 (selección de clase)
+│   ├── map/
+│   │   └── page.tsx          ← Pantalla 2 (mapa)
+│   └── game/
+│       └── page.tsx          ← Pantalla 3 (juego)
+├── components/
+│   ├── character-select/
+│   ├── map/
+│   │   └── ShopPanel.tsx     ← Tienda de items
+│   └── game/
+├── data/
+│   ├── questions.ts          ← 25 preguntas hardcodeadas
+│   └── classes.ts            ← Datos de las 3 clases
+├── hooks/
+│   └── useGame.ts            ← Lógica completa del juego
+├── store/
+│   └── gameStore.ts          ← Estado global con Zustand + persist
+└── types/
+    └── game.ts               ← Tipos TypeScript del proyecto
+```
+
+---
+
+## 4. Tipos TypeScript
+
+```ts
+type ClassType = "warrior" | "mage" | "archer"
+type ZoneId = 1 | 2 | 3 | 4 | 5
+type Difficulty = "easy" | "medium" | "hard"
+type ItemId = "sword" | "bow" | "vision" | "shield"
+```
+
+---
+
+## 5. Clases iniciales
+
+| Clase | Item inicial | Efecto |
+|---|---|---|
+| 🛡️ Guerrero | Escudo de Piedra | Absorbe automáticamente 1 fallo |
+| 🧙 Mago | Espada de Omisión | Saltás 1 pregunta sin penalización |
+| 🏹 Arquero | Visión Arcana | Revelás la respuesta correcta |
+
+- Cada item inicial es de un solo uso
+- Al elegir clase el juego se resetea completamente
+- Oryn narra una descripción épica del personaje elegido
+
+---
+
+## 6. Los 5 escenarios de Syntharia
+
+| # | Zona | Estado inicial |
+|---|---|---|
+| 1 | 🌲 Bosque de los Primeros Hechizos | Desbloqueado |
+| 2 | 🏔️ Montañas del Código Perdido | Bloqueado |
+| 3 | 🏚️ Aldea del Compilador Roto | Bloqueado |
+| 4 | 🌋 Volcán de los Bugs Eternos | Bloqueado |
+| 5 | 🏰 Castillo del Kernel Oscuro | Bloqueado |
+
+---
+
+## 7. Las 3 pantallas
+
+### Pantalla 1 — Selección de clase
+- Si ya hay clase guardada → redirige automáticamente al mapa
+- Muestra las 3 clases con su item inicial
+- Al seleccionar, Oryn narra la descripción del personaje
+- Al confirmar, resetea el estado y navega al mapa
+
+### Pantalla 2 — Mapa del reino
+- Muestra las 5 zonas con su estado (desbloqueada / bloqueada / completada)
+- Botón "Comenzar de nuevo" que resetea todo el juego
+- Panel de tienda para comprar items entre zonas
+- Si no hay clase guardada → redirige al inicio
+
+### Pantalla 3 — Pantalla de juego
+- Barra lateral izquierda: vidas, monedas, racha, inventario, acceso rápido
+- Área principal: narración de Oryn, 4 opciones, feedback
+- Si no hay clase guardada → redirige al inicio
+- Contador de aciertos visible durante la partida
+
+---
+
+## 8. Lógica de zonas
+
+### Para superar una zona
+- Responder al menos 4 de 5 preguntas correctamente
+- Tener al menos 1 vida al finalizar
+
+### Si no se cumplen las condiciones
+- Se puede reintentar la zona con las vidas restantes
+- Las preguntas se mezclan de nuevo
+
+### Si se pierden todas las vidas
+- Game Over global
+
+---
+
+## 9. Sistema de monedas
+
+| Acción | Monedas |
+|---|---|
+| Respuesta correcta | +10 |
+| Racha de 3 seguidas | +25 bonus |
+| Respuesta incorrecta | 0 (y -1 vida) |
+
+---
+
+## 10. Tienda de items
+
+| Item | Costo | Efecto |
+|---|---|---|
+| 🗡️ Espada de Omisión | 30 💰 | Saltás 1 pregunta |
+| 🏹 Arco Certero | 50 💰 | Eliminás 1 opción incorrecta |
+| 🔮 Visión Arcana | 80 💰 | Revelás la respuesta correcta |
+| 🛡️ Escudo de Piedra | 40 💰 | Absorbe automáticamente el próximo fallo |
+
+- Accesible solo desde el mapa, entre zonas
+- Cada item es de un solo uso
+- Se pueden comprar múltiples unidades
+
+---
+
+## 11. Comportamiento del Escudo
+
+- **No se usa manualmente** — se activa automáticamente al fallar
+- Si tenés escudo y fallás → absorbe el golpe, misma pregunta, podés reintentar
+- Si no tenés escudo y fallás → perdés una vida, la pregunta avanza
+- El botón del escudo en el acceso rápido es solo indicador visual con badge de cantidad
+
+---
+
+## 12. Persistencia del estado
+
+- Zustand + `persist` guarda todo en localStorage bajo la key `the-last-dev-storage`
+- Al cerrar y reabrir el navegador, el jugador continúa donde lo dejó
+- `resetGame` limpia el localStorage y el estado en memoria
+- La pantalla de inicio espera a que Zustand rehidrate antes de renderizar (evita parpadeo)
+
+---
+
+## 13. Preguntas — estructura
+
+```ts
+interface Question {
+  id: string
+  zone: ZoneId
+  narrative: string
+  options: string[]
+  correct: number  // índice de la opción correcta
+  difficulty: Difficulty
+}
+```
+
+25 preguntas totales, 5 por zona, dificultad progresiva:
+- Zonas 1-2: easy
+- Zona 3: medium
+- Zonas 4-5: hard
+
+Helper disponible: `getQuestionsByZone(zone: number): Question[]`
+
+---
+
+## 14. Estado del juego (Zustand)
+
+### Estado
+```ts
+class: ClassType | null
+lives: number           // inicia en 5, global para todo el juego
+coins: number
+streak: number          // se resetea al entrar a cada zona
+currentZone: ZoneId
+inventory: Item[]
+zonesStatus: ZoneStatus[]
+answeredQuestions: string[]
+```
+
+### Acciones
+```ts
+setClass(classType, starterItemId)   // resetea estado + asigna clase e item
+addCoins(amount)
+loseLife()
+incrementStreak()
+resetStreak()
+useItem(itemId)
+buyItem(itemId)
+completeZone(zoneId)
+markQuestionAnswered(questionId)
+resetGame()
+setCurrentZone(zoneId)
+```
+
+---
+
+## 15. Hook useGame
+
+Centraliza toda la lógica de la pantalla de juego:
+
+- `zoneQuestions` — se fija al montar con `useState` para evitar recálculos
+- `correctCount` — contador de aciertos por zona
+- `shieldActive` — el escudo se consume automáticamente en `handleAnswer`
+- La racha se resetea con `useEffect` al montar (por zona)
+- El componente usa `key={zone}` para forzar remount al cambiar de zona
+
+---
+
+## 16. Fases de desarrollo
+
+### ✅ Fase 1 — Funcionalidad base (completada)
+- [x] Estructura del proyecto
+- [x] Tipos TypeScript
+- [x] Store con Zustand + persist
+- [x] 3 pantallas funcionales
+- [x] 25 preguntas hardcodeadas
+- [x] Sistema de vidas, monedas y rachas
+- [x] Inventario + tienda + acceso rápido
+- [x] Lógica del escudo automático
+- [x] Protección de rutas
+- [x] Reset del juego
+- [x] Persistencia entre sesiones
+
+### 🔲 Fase 2 — Agente + MCP
+- [ ] Integración de Groq SDK como narrador Oryn
+- [ ] Prompt de personalidad de Oryn
+- [ ] Memoria de sesión con historial de respuestas
+- [ ] MCP Tool `get_challenge()` para elegir preguntas dinámicamente
+- [ ] Oryn reacciona a clases, respuestas, items y zonas
+
+### 🔲 Fase 3 — Polish + Deploy
+- [ ] Mapa con fondo ilustrado
+- [ ] Animaciones con Framer Motion
+- [ ] Deploy en Vercel
+- [ ] README para portafolio
+
+---
+
+## 17. Criterios de éxito para portafolio
+
+- [ ] El juego es completable de inicio a fin (5 zonas)
+- [ ] El agente Oryn usa memoria real de sesión
+- [ ] Oryn llama a `get_challenge()` como tool MCP
+- [ ] La tienda, el inventario y los items funcionan end-to-end
+- [ ] Deploy público en Vercel con URL compartible
+- [ ] README explica el uso de agente + MCP de forma clara
+
+---
+
+*The Last Dev — GDD v3.0* generador de texto
 
 ---
 
