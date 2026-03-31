@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation"
 import { useGame } from "@/hooks/useGame"
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ConfirmModal from '@/components/game/ConfirmModal'
 
 function GameContent() {
@@ -26,12 +26,6 @@ function GameContent() {
     router.push("/map")
   }
 
-  // game over
-  if (gameOver) {
-    router.push("/game-over")
-    return null
-  }
-
   // zone complete
   if (zoneComplete) return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 animate-in zoom-in-95 duration-700">
@@ -50,6 +44,10 @@ function GameContent() {
       <p className="text-zinc-500 animate-pulse uppercase tracking-widest text-xs font-bold">Invocando el siguiente desafío...</p>
     </main>
   )
+
+  useEffect(() => {
+    if (gameOver) router.push("/game-over")
+  }, [gameOver])
 
   // render return
   return (
@@ -135,12 +133,12 @@ function GameContent() {
               onClick={() => handleAnswer(optionIndex)}
               disabled={answered}
               className={`p-6 rounded-2xl border-2 transition-all text-left flex items-center gap-4 group ${answered
-                  ? optionIndex === currentQuestion.correct
-                    ? "bg-emerald-950/30 border-emerald-500 text-emerald-400"
-                    : "bg-zinc-900/10 border-zinc-900 opacity-40"
-                  : revealed && optionIndex === currentQuestion.correct
-                    ? "bg-amber-950/30 border-amber-500 text-amber-400"
-                    : "glass border-zinc-800 hover:border-zinc-500 active:scale-[0.98]"
+                ? optionIndex === currentQuestion.correct
+                  ? "bg-emerald-950/30 border-emerald-500 text-emerald-400"
+                  : "bg-zinc-900/10 border-zinc-900 opacity-40"
+                : revealed && optionIndex === currentQuestion.correct
+                  ? "bg-amber-950/30 border-amber-500 text-amber-400"
+                  : "glass border-zinc-800 hover:border-zinc-500 active:scale-[0.98]"
                 }`}
             >
               <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors ${answered && optionIndex === currentQuestion.correct
