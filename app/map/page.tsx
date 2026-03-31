@@ -4,17 +4,25 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useGameStore } from "@/store/gameStore"
 import ShopPanel from '@/components/map/ShopPanel'
-import { ZoneId } from '@/types/game'
+import { ZoneId, ZoneStatus } from '@/types/game'
+import ConfirmModal from '@/components/game/ConfirmModal'
 
 export default function Map() {
+  const [showResetModal, setShowResetModal] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const router = useRouter()
   const { zonesStatus, currentZone, lives, coins, class: playerClass, setCurrentZone, resetGame } = useGameStore()
 
-  const handleZoneClick = (zoneId: number, unlocked: boolean) => {
-    if (!unlocked) return
-    setCurrentZone(zoneId as ZoneId)
-    router.push(`/game?zone=${zoneId}`)
+  const handleZoneClick = (zone: ZoneStatus) => {
+    if (!zone.unlocked || zone.completed) return
+    setCurrentZone(zone.id as ZoneId)
+    router.push(`/game?zone=${zone.id}`)
+  }
+
+  const handleReset = () => {
+    resetGame()
+    setShowResetModal(false)
+    router.push("/")
   }
 
   useEffect(() => {
@@ -24,6 +32,10 @@ export default function Map() {
 
   if (!hydrated) return null
   if (!playerClass) return null
+  if (lives <= 0) {
+    router.push("/game-over")
+    return null
+  }
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-12 space-y-12">
@@ -44,10 +56,7 @@ export default function Map() {
         </div>
 
         <button
-          onClick={() => {
-            resetGame()
-            router.push("/")
-          }}
+          onClick={() => setShowResetModal(true)}
           className="text-[10px] uppercase tracking-widest text-zinc-600 hover:text-red-400 font-bold transition-colors"
         >
           Comenzar de nuevo
@@ -63,7 +72,7 @@ export default function Map() {
         {zonesStatus.map((zone) => (
           <div
             key={zone.id}
-            onClick={() => handleZoneClick(zone.id, zone.unlocked)}
+            onClick={() => handleZoneClick(zone)}
             className={`p-6 rounded-xl border transition-all flex flexacol justify-between h-40 ${zone.unlocked
               ? "glass border-zinc-800 cursor-pointer hover:border-zinc-500 active:scale-[0.98]"
               : "bg-zinc-900/20 border-zinc-900 opacity-60 grayscale cursor-not-allowed"
@@ -93,6 +102,18 @@ export default function Map() {
       <div className="glass border border-zinc-800 rounded-xl p-6">
         <ShopPanel />
       </div>
+
+      {/* modal reset */}
+      {showResetModal && (
+        <ConfirmModal
+          title="¿Reiniciar partida?"
+          description="Perderás todo tu progreso y comenzarás de nuevo."
+          confirmLabel="Sí, reiniciar"
+          cancelLabel="Cancelar"
+          onConfirm={handleReset}
+          onCancel={() => setShowResetModal(false)}
+        />
+      )}
     </main>
   )
 }

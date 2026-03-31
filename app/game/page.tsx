@@ -2,29 +2,37 @@
 
 import { useSearchParams } from "next/navigation"
 import { useGame } from "@/hooks/useGame"
+import { useState } from 'react'
+import ConfirmModal from '@/components/game/ConfirmModal'
 
 function GameContent() {
+
+  // initial states
+  const [showExitModal, setShowExitModal] = useState(false)
+
+  // initial states
   const {
     currentQuestion, feedback, answered,
     visibleOptions, revealed, gameOver, zoneComplete,
     lives, coins, streak, inventory, currentZone,
     handleAnswer, handleNext, handleUseSword,
-    handleUseBow, handleUseVision, handleUseShield,
+    handleUseBow, handleUseVision,
     router, correctCount
   } = useGame()
 
-  console.log("Aciertos:", correctCount)
+  // handle modal
+  const handleExit = () => {
+    setShowExitModal(false)
+    router.push("/map")
+  }
 
-  if (gameOver) return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 animate-in fade-in duration-1000">
-      <div className="space-y-4">
-        <h1 className="text-6xl font-black text-red-500 uppercase tracking-tighter">Game Over</h1>
-        <p className="text-zinc-400 text-xl max-w-md">Syntharia ha caído en las sombras... pero el ciclo del código puede reiniciarse.</p>
-      </div>
-      <button onClick={() => router.push("/")} className="btn-primary">Intentar de nuevo</button>
-    </main>
-  )
+  // game over
+  if (gameOver) {
+    router.push("/game-over")
+    return null
+  }
 
+  // zone complete
   if (zoneComplete) return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 animate-in zoom-in-95 duration-700">
       <div className="text-6xl mb-4">✨</div>
@@ -36,12 +44,14 @@ function GameContent() {
     </main>
   )
 
+  // loading
   if (!currentQuestion) return (
     <main className="min-h-screen flex items-center justify-center">
       <p className="text-zinc-500 animate-pulse uppercase tracking-widest text-xs font-bold">Invocando el siguiente desafío...</p>
     </main>
   )
 
+  // render return
   return (
     <main className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       <aside className="lg:col-span-3 space-y-6 lg:sticky lg:top-8 animate-in slide-in-from-left-4 duration-500">
@@ -98,6 +108,13 @@ function GameContent() {
             ))}
           </div>
         </div>
+
+        <button
+          onClick={() => setShowExitModal(true)}
+          className="w-full py-2 rounded-xl border border-zinc-800 text-zinc-600 hover:text-red-400 hover:border-red-900 transition-all text-[10px] uppercase tracking-widest font-bold"
+        >
+          Abandonar zona
+        </button>
       </aside>
 
       <section className="lg:col-span-9 space-y-8 animate-in fade-in zoom-in-95 duration-500">
@@ -110,6 +127,7 @@ function GameContent() {
           </p>
         </div>
 
+        {/* options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {visibleOptions.map((optionIndex) => (
             <button
@@ -117,12 +135,12 @@ function GameContent() {
               onClick={() => handleAnswer(optionIndex)}
               disabled={answered}
               className={`p-6 rounded-2xl border-2 transition-all text-left flex items-center gap-4 group ${answered
-                ? optionIndex === currentQuestion.correct
-                  ? "bg-emerald-950/30 border-emerald-500 text-emerald-400"
+                  ? optionIndex === currentQuestion.correct
+                    ? "bg-emerald-950/30 border-emerald-500 text-emerald-400"
+                    : "bg-zinc-900/10 border-zinc-900 opacity-40"
                   : revealed && optionIndex === currentQuestion.correct
                     ? "bg-amber-950/30 border-amber-500 text-amber-400"
-                    : "bg-zinc-900/10 border-zinc-900 opacity-40"
-                : "glass border-zinc-800 hover:border-zinc-500 active:scale-[0.98]"
+                    : "glass border-zinc-800 hover:border-zinc-500 active:scale-[0.98]"
                 }`}
             >
               <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors ${answered && optionIndex === currentQuestion.correct
@@ -140,7 +158,7 @@ function GameContent() {
           {feedback && (
             <div className="flex flex-col md:flex-row items-center gap-6 animate-in slide-in-from-bottom-4 duration-500">
               <p className={`text-xl font-bold uppercase tracking-tight ${feedback.includes("¡Correcto!") ? "text-emerald-400" :
-                  feedback.includes("🛡️") ? "text-blue-400" : "text-amber-500"
+                feedback.includes("🛡️") ? "text-blue-400" : "text-amber-500"
                 }`}>
                 {feedback}
               </p>
@@ -153,6 +171,17 @@ function GameContent() {
           )}
         </div>
       </section>
+
+      {showExitModal && (
+        <ConfirmModal
+          title="¿Abandonar la zona?"
+          description="Perderás el progreso de esta zona y los items usados no serán recuperados."
+          confirmLabel="Sí, abandonar"
+          cancelLabel="Seguir jugando"
+          onConfirm={handleExit}
+          onCancel={() => setShowExitModal(false)}
+        />
+      )}
     </main>
   )
 }
