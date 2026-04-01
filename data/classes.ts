@@ -35,7 +35,7 @@ export const classes: ClassData[] = [
     emoji: "🏹",
     description: "Precisión para revelar la verdad.",
     orynQuote: "El Arquero... ojo certero, corazón tranquilo. Ves lo que otros no ven. Syntharia confía en tu puntería.",
-    starterItemId: "vision",
-    starterItemName: "Visión Arcana",
+    starterItemId: "scroll",
+    starterItemName: "Pergamino del Oráculo",
   },
 ]
