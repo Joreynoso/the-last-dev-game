@@ -4,20 +4,21 @@ import { useSearchParams } from "next/navigation"
 import { useGame } from "@/hooks/useGame"
 import { useEffect, useState } from 'react'
 import ConfirmModal from '@/components/game/ConfirmModal'
+import { useGameStore } from "@/store/gameStore"
 
 function GameContent() {
-
-  // initial states
   const [showExitModal, setShowExitModal] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
-  // initial states
+  const { class: playerClass } = useGameStore()
+
   const {
     currentQuestion, feedback, answered,
-    visibleOptions, revealed, gameOver, zoneComplete,
+    visibleOptions, gameOver, zoneComplete,
     lives, coins, streak, inventory, currentZone,
     handleAnswer, handleNext, handleUseSword,
-    handleUseBow, handleUseVision,
-    router, correctCount
+    handleUseBow, handleUseScroll, hint,
+    router, correctCount, zoneFailed
   } = useGame()
 
   // handle modal
@@ -26,7 +27,36 @@ function GameContent() {
     router.push("/map")
   }
 
-  // zone complete
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (gameOver) router.push("/game-over")
+  }, [gameOver, router])
+
+  if (!hydrated) return null
+
+  if (!playerClass) {
+    router.push("/")
+    return null
+  }
+
+  if (zoneFailed) return (
+    <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8">
+      <div className="space-y-4">
+        <p className="text-6xl">💔</p>
+        <h1 className="text-4xl font-black text-red-400 uppercase tracking-tighter">Zona no superada</h1>
+        <p className="text-zinc-400 max-w-md">
+          Necesitás al menos 4 respuestas correctas. Obtuviste {correctCount}/5. ¡Intentalo de nuevo!
+        </p>
+      </div>
+      <button onClick={() => router.push("/map")} className="btn-primary">
+        Volver al mapa
+      </button>
+    </main>
+  )
+
   if (zoneComplete) return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 animate-in zoom-in-95 duration-700">
       <div className="text-6xl mb-4">✨</div>
@@ -34,22 +64,18 @@ function GameContent() {
         <h1 className="text-4xl font-black text-zinc-50 uppercase tracking-tight">¡Zona {currentZone} Restaurada!</h1>
         <p className="text-zinc-400 italic">"Has hecho bien, Dev. Los hilos de este sector vuelven a vibrar." — Oryn</p>
       </div>
-      <button onClick={() => router.push("/map")} className="btn-primary">Regresar al mapa</button>
+      <button onClick={() => router.push("/map")} className="btn-primary">
+        Regresar al mapa
+      </button>
     </main>
   )
 
-  // loading
   if (!currentQuestion) return (
     <main className="min-h-screen flex items-center justify-center">
       <p className="text-zinc-500 animate-pulse uppercase tracking-widest text-xs font-bold">Invocando el siguiente desafío...</p>
     </main>
   )
 
-  useEffect(() => {
-    if (gameOver) router.push("/game-over")
-  }, [gameOver])
-
-  // render return
   return (
     <main className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       <aside className="lg:col-span-3 space-y-6 lg:sticky lg:top-8 animate-in slide-in-from-left-4 duration-500">
@@ -72,13 +98,34 @@ function GameContent() {
               <span className="text-emerald-400 font-bold text-lg">{correctCount}/5</span>
             </div>
           </div>
+
           <div className="pt-4 border-t border-zinc-800 space-y-4">
             <h3 className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold mb-3">Acceso Rápido</h3>
             <div className="grid grid-cols-2 gap-2">
-              <button title="Omitir Desafío" onClick={handleUseSword} disabled={inventory.find(i => i.id === "sword")?.quantity === 0 || answered} className="p-3 glass rounded-lg border-zinc-800 hover:border-zinc-500 disabled:opacity-30 disabled:grayscale transition-all text-xl">🗡️</button>
-              <button title="Eliminar Opción" onClick={handleUseBow} disabled={inventory.find(i => i.id === "bow")?.quantity === 0 || answered} className="p-3 glass rounded-lg border-zinc-800 hover:border-zinc-500 disabled:opacity-30 disabled:grayscale transition-all text-xl">🏹</button>
-              <button title="Revelar Verdad" onClick={handleUseVision} disabled={inventory.find(i => i.id === "vision")?.quantity === 0 || answered} className="p-3 glass rounded-lg border-zinc-800 hover:border-zinc-500 disabled:opacity-30 disabled:grayscale transition-all text-xl">🔮</button>
-
+              <button
+                title="Omitir Desafío"
+                onClick={handleUseSword}
+                disabled={inventory.find(i => i.id === "sword")?.quantity === 0 || answered}
+                className="p-3 glass rounded-lg border-zinc-800 hover:border-zinc-500 disabled:opacity-30 disabled:grayscale transition-all text-xl"
+              >
+                🗡️
+              </button>
+              <button
+                title="Eliminar Opción"
+                onClick={handleUseBow}
+                disabled={inventory.find(i => i.id === "bow")?.quantity === 0 || answered}
+                className="p-3 glass rounded-lg border-zinc-800 hover:border-zinc-500 disabled:opacity-30 disabled:grayscale transition-all text-xl"
+              >
+                🏹
+              </button>
+              <button
+                title="Pergamino del Oráculo"
+                onClick={handleUseScroll}
+                disabled={inventory.find(i => i.id === "scroll")?.quantity === 0 || answered}
+                className="p-3 glass rounded-lg border-zinc-800 hover:border-zinc-500 disabled:opacity-30 disabled:grayscale transition-all text-xl"
+              >
+                📜
+              </button>
               <button
                 title="Proteger Alma (automático)"
                 disabled={true}
@@ -91,10 +138,10 @@ function GameContent() {
                   </span>
                 )}
               </button>
-
             </div>
           </div>
         </div>
+
         <div className="glass p-5 rounded-2xl border-zinc-800">
           <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-3">Inventario Completo</p>
           <div className="space-y-2">
@@ -125,26 +172,32 @@ function GameContent() {
           </p>
         </div>
 
-        {/* options */}
+        {hint && (
+          <div className="glass border border-amber-900/50 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <p className="text-[10px] uppercase tracking-widest text-amber-600 font-bold mb-1">Pergamino del Oráculo</p>
+            <p className="text-amber-300 text-sm italic">"{hint}"</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {visibleOptions.map((optionIndex) => (
             <button
               key={optionIndex}
               onClick={() => handleAnswer(optionIndex)}
               disabled={answered}
-              className={`p-6 rounded-2xl border-2 transition-all text-left flex items-center gap-4 group ${answered
-                ? optionIndex === currentQuestion.correct
-                  ? "bg-emerald-950/30 border-emerald-500 text-emerald-400"
-                  : "bg-zinc-900/10 border-zinc-900 opacity-40"
-                : revealed && optionIndex === currentQuestion.correct
-                  ? "bg-amber-950/30 border-amber-500 text-amber-400"
+              className={`p-6 rounded-2xl border-2 transition-all text-left flex items-center gap-4 group ${
+                answered
+                  ? optionIndex === currentQuestion.correct
+                    ? "bg-emerald-950/30 border-emerald-500 text-emerald-400"
+                    : "bg-zinc-900/10 border-zinc-900 opacity-40"
                   : "glass border-zinc-800 hover:border-zinc-500 active:scale-[0.98]"
-                }`}
+              }`}
             >
-              <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors ${answered && optionIndex === currentQuestion.correct
-                ? "bg-emerald-500 border-emerald-400 text-emerald-950"
-                : "bg-zinc-800 border-zinc-700 text-zinc-400 group-hover:bg-zinc-700"
-                }`}>
+              <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors ${
+                answered && optionIndex === currentQuestion.correct
+                  ? "bg-emerald-500 border-emerald-400 text-emerald-950"
+                  : "bg-zinc-800 border-zinc-700 text-zinc-400 group-hover:bg-zinc-700"
+              }`}>
                 {String.fromCharCode(65 + optionIndex)}
               </span>
               <span className="text-lg font-medium">{currentQuestion.options[optionIndex]}</span>
@@ -155,9 +208,10 @@ function GameContent() {
         <div className="h-24 flex items-center justify-center">
           {feedback && (
             <div className="flex flex-col md:flex-row items-center gap-6 animate-in slide-in-from-bottom-4 duration-500">
-              <p className={`text-xl font-bold uppercase tracking-tight ${feedback.includes("¡Correcto!") ? "text-emerald-400" :
+              <p className={`text-xl font-bold uppercase tracking-tight ${
+                feedback.includes("¡Correcto!") ? "text-emerald-400" :
                 feedback.includes("🛡️") ? "text-blue-400" : "text-amber-500"
-                }`}>
+              }`}>
                 {feedback}
               </p>
               {answered && (
@@ -182,7 +236,7 @@ function GameContent() {
       )}
     </main>
   )
-}
+} 
 
 export default function Game() {
   const searchParams = useSearchParams()

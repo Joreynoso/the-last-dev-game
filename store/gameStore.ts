@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { ClassType, GameState, ItemId, ZoneId } from "@/types/game"
+import { item_costs } from "@/data/item_costs"
 
 /**
  * 🛠️ Acciones del Estado de Juego:
@@ -21,10 +22,10 @@ const INITIAL_STATE: GameState = {
     streak: 0,
     currentZone: 1,
     inventory: [
-        { id: "sword", name: "Espada de Omisión", description: "Saltás 1 pregunta", cost: 30, quantity: 0 },
-        { id: "bow", name: "Arco Certero", description: "Eliminás 1 opción incorrecta", cost: 50, quantity: 0 },
-        { id: "vision", name: "Visión Arcana", description: "Revelás la respuesta correcta", cost: 80, quantity: 0 },
-        { id: "shield", name: "Escudo de Piedra", description: "Absorbés 1 fallo sin perder vida", cost: 40, quantity: 0 },
+        { id: "sword", name: "Espada de Omisión", description: "Saltás 1 pregunta", cost: item_costs.sword, quantity: 0 },
+        { id: "bow", name: "Arco Certero", description: "Eliminás 1 opción incorrecta", cost: item_costs.bow, quantity: 0 },
+        { id: "scroll", name: "Pergamino del Oráculo", description: "Oryn te da una pista de la respuesta", cost: item_costs.scroll, quantity: 0 },
+        { id: "shield", name: "Escudo de Piedra", description: "Absorbés 1 fallo sin perder vida", cost: item_costs.shield, quantity: 0 },
     ],
     zonesStatus: [
         { id: 1, name: "Bosque de los Primeros Hechizos", unlocked: true, completed: false },
@@ -48,6 +49,7 @@ interface GameStore extends GameState {
     markQuestionAnswered: (questionId: string) => void
     resetGame: () => void
     setCurrentZone: (zoneId: ZoneId) => void
+    resetZoneQuestions: (zoneId: ZoneId) => void
 }
 
 export const useGameStore = create<GameStore>()(
@@ -93,6 +95,13 @@ export const useGameStore = create<GameStore>()(
                         ),
                     }
                 }),
+
+            resetZoneQuestions: (zoneId) =>
+                set((state) => ({
+                    answeredQuestions: state.answeredQuestions.filter(
+                        (id) => !id.startsWith(`z${zoneId}_`)
+                    ),
+                })),
 
             completeZone: (zoneId) =>
                 set((state) => ({

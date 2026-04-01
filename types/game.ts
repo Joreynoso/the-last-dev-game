@@ -4,11 +4,7 @@ export type ZoneId = 1 | 2 | 3 | 4 | 5
 
 export type Difficulty = "easy" | "medium" | "hard"
 
-export type ItemId =
-  | "sword"      // Espada de Omisión
-  | "bow"        // Arco Certero
-  | "vision"     // Visión Arcana
-  | "shield"     // Escudo de Piedra
+export type ItemId = "sword" | "bow" | "scroll" | "shield"
 
 export interface Item {
   id: ItemId
@@ -25,6 +21,7 @@ export interface Question {
   options: string[]
   correct: number
   difficulty: Difficulty
+  hint?: string
 }
 
 export interface ZoneStatus {

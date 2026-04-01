@@ -3,6 +3,8 @@ import { useRouter } from "next/navigation"
 import { useGameStore } from "@/store/gameStore"
 import { getQuestionsByZone } from "@/data/questions"
 import { Question } from "@/types/game"
+import { item_costs } from "@/data/item_costs"
+import { economy } from "@/data/economy"
 
 export function useGame() {
     const router = useRouter()
@@ -11,7 +13,7 @@ export function useGame() {
         inventory, addCoins, loseLife,
         incrementStreak, resetStreak,
         useItem, completeZone, markQuestionAnswered,
-        answeredQuestions, zonesStatus,
+        answeredQuestions, resetZoneQuestions
     } = useGameStore()
 
     const [correctCount, setCorrectCount] = useState(0)
@@ -22,12 +24,12 @@ export function useGame() {
         )
     )
 
-    const [shieldActive, setShieldActive] = useState(false)
+    const [hint, setHint] = useState<string | null>(null)
+    const [zoneFailed, setZoneFailed] = useState(false)
     const [currentIndex, setCurrentIndex] = useState(0)
     const [feedback, setFeedback] = useState<string | null>(null)
     const [answered, setAnswered] = useState(false)
     const [visibleOptions, setVisibleOptions] = useState<number[]>([0, 1, 2, 3])
-    const [revealed, setRevealed] = useState(false)
     const [gameOver, setGameOver] = useState(false)
     const [zoneComplete, setZoneComplete] = useState(false)
 
@@ -45,9 +47,9 @@ export function useGame() {
         if (isCorrect) {
             setAnswered(true)
             markQuestionAnswered(currentQuestion.id)
-            addCoins(10)
+            addCoins(economy.coinsPerCorrect)
             incrementStreak()
-            if ((streak + 1) % 3 === 0) addCoins(25)
+            if ((streak + 1) % 3 === 0) addCoins(economy.coinsPerStreak)
             setCorrectCount((prev) => prev + 1)
             setFeedback("¡Correcto! El hechizo resplandece.")
         } else {
@@ -64,17 +66,24 @@ export function useGame() {
             }
         }
     }
+
     const handleNext = () => {
         if (currentIndex + 1 >= zoneQuestions.length) {
-            completeZone(currentZone)
-            setZoneComplete(true)
+            if (correctCount >= 4 && lives > 0) {
+                addCoins(economy.coinsPerZone)
+                completeZone(currentZone)
+                setZoneComplete(true)
+            } else {
+                resetZoneQuestions(currentZone)
+                setZoneFailed(true)
+            }
             return
         }
         setCurrentIndex((prev) => prev + 1)
         setFeedback(null)
         setAnswered(false)
         setVisibleOptions([0, 1, 2, 3])
-        setRevealed(false)
+        setHint(null)
     }
 
     const handleUseSword = () => {
@@ -93,19 +102,11 @@ export function useGame() {
         setVisibleOptions((prev) => prev.filter((i) => i !== toRemove))
     }
 
-    const handleUseVision = () => {
-        const vision = inventory.find((i) => i.id === "vision")
-        if (!vision || vision.quantity <= 0 || answered) return
-        useItem("vision")
-        setRevealed(true)
-    }
-
-    const handleUseShield = () => {
-        const shield = inventory.find((i) => i.id === "shield")
-        if (!shield || shield.quantity <= 0) return
-        useItem("shield")
-        setShieldActive(true)
-        setFeedback("🛡️ Escudo activado. Tu próximo fallo será absorbido.")
+    const handleUseScroll = () => {
+        const scroll = inventory.find((i) => i.id === "scroll")
+        if (!scroll || scroll.quantity <= 0 || answered || !currentQuestion) return
+        useItem("scroll")
+        setHint(currentQuestion.hint ?? "Oryn no encuentra pistas sobre este desafío.")
     }
 
     useEffect(() => {
@@ -117,7 +118,6 @@ export function useGame() {
         feedback,
         answered,
         visibleOptions,
-        revealed,
         gameOver,
         zoneComplete,
         lives,
@@ -129,9 +129,10 @@ export function useGame() {
         handleNext,
         handleUseSword,
         handleUseBow,
-        handleUseVision,
+        handleUseScroll,
         router,
         correctCount,
-        shieldActive,
+        zoneFailed,
+        hint,
     }
 }
